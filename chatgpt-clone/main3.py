@@ -4,7 +4,7 @@ import base64
 import dotenv
 dotenv.load_dotenv()  # Load environment variables from .env file
 import streamlit as st
-from agents import Agent, Runner, SQLiteSession, WebSearchTool, FileSearchTool, ImageGenerationTool, CodeInterpreterTool
+from agents import Agent, Runner, SQLiteSession, WebSearchTool, FileSearchTool, ImageGenerationTool, CodeInterpreterTool, HostedMCPTool
  
 client = OpenAI()
 
@@ -33,9 +33,20 @@ if "agent" not in st.session_state:
             CodeInterpreterTool(
                 tool_config={
                     "type" : "code_interpreter",
-                    "container":{"type":"auto"}
+                    "container":{"type":"auto",
+                                 # "file_ids":[] 해당하는 파일을 접근 권한을 주는 거
+                                 }
                 }
             ),
+            HostedMCPTool(
+                tool_config={
+                    "server_url" : "Https://mcp.context7.com/mcp",
+                    "type":"mcp",
+                    "server_label":"Context7",
+                    "server_description" : "Use this to get the docs from software projects.",
+                    "require_approval":"never"
+                }
+            )
                  ]
     )
 
@@ -77,7 +88,13 @@ async def paint_history():
             elif message_type == "code_interpreter_call":
                 with st.chat_message("ai"):
                     st.code(message["code"])
-
+            elif message_type == "mcp_list_tools":
+                with st.chat_message("ai"):
+                    st.write(f"Listed {message["server_label"]}' tools")
+            elif message_type == "mcp_call":
+                with st.chat_message("ai"):
+                    st.write(f"Called {message["server_label"]}'s {message["name"]} with args: {message["arguments"]}")
+ 
 asyncio.run(paint_history())
 
 def update_status(status_container, event):
@@ -96,10 +113,32 @@ def update_status(status_container, event):
 
         'response.code_interpreter_call_code.done':("Rancode","complete"),
         'response.code_interpreter_call_code.completed':("Rancode","complete"),
-        'response.code_interpreter_call_code.in_progress':("Running code", "running"),
-        'response.code_interpreter_call_code.interpreting':("Running code", "running"),
-
-
+        'response.code_interpreter_call_code.in_progress':("Running code", "complete"),
+        'response.code_interpreter_call_code.interpreting':("Running code", "complete"),
+         "response.mcp_call.completed": (
+            "⚒️ Called MCP tool",
+            "complete",
+        ),
+        "response.mcp_call.failed": (
+            "⚒️ Error calling MCP tool",
+            "complete",
+        ),
+        "response.mcp_call.in_progress": (
+            "⚒️ Calling MCP tool...",
+            "running",
+        ),
+        "response.mcp_list_tools.completed": (
+            "⚒️ Listed MCP tools",
+            "complete",
+        ),
+        "response.mcp_list_tools.failed": (
+            "⚒️ Error listing MCP tools",
+            "complete",
+        ),
+        "response.mcp_list_tools.in_progress": (
+            "⚒️ Listing MCP tools",
+            "running",
+        ),
     }
 
     if event in status_messages:
@@ -111,9 +150,10 @@ def update_status(status_container, event):
 
 async def run_agent(message):
     with st.chat_message("ai"):
-        status_container = st.status("로딩", expanded=False)
-        image_placeholder = st.empty()
+        status_container = st.status("⏳", expanded=False)
         code_placeholder = st.empty()
+        image_placeholder = st.empty()
+
         text_placeholder = st.empty()
         response = ""
         code_response = ""
@@ -157,6 +197,7 @@ if prompt:
         st.session_state["image_placeholder"].empty()
     if "text_placeholder" in st.session_state:
         st.session_state["text_placeholder"].empty() 
+
     for file in prompt.files:   
         if file.type.startswith("text/"):
             with st.chat_message("ai"):
