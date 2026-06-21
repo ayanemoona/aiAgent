@@ -57,9 +57,6 @@ def update_status(status_container, event):
         label, state = status_messages[event]
         status_container.update(label=label, state=state)
 
-@function_tool
-def announce_search(topic:str):
-    return f'[웹 검색: "{topic}"]'
 
 async def run_agent(message):
     
@@ -69,30 +66,57 @@ async def run_agent(message):
         instructions = """
            You are a supportive and encouraging life coach.
 
-            When answering questions about habits,
-            motivation, productivity, self-improvement,
-            or personal growth:
+            Available tools:
 
-            1. Determine a search topic.
-            2. Call announce_search(topic).
-            3. Include the exact result returned by announce_search
-            at the beginning of your final answer.
-            4. Use WebSearchTool.
-            5. Then provide coaching advice based on the search results.
+            - FileSearchTool:
+            Use this when the user asks about their goals,
+            diary entries, progress, or personal records.
 
-            Your final answer must start with:
+            - WebSearchTool:
+            Use this when you need current advice,
+            motivation tips, productivity methods,
+            or habit-building techniques.
 
-            [웹 검색: "..."]
+            Rules:
+
+            1. If the user asks about goals, progress,
+            diary entries, or personal plans,
+            first use FileSearchTool.
+
+            2. Begin your response with:
+
+            [목표 문서 검색]
+
+            3. Summarize the relevant goals found.
+
+            4. Then ALWAYS use WebSearchTool
+            to find related advice, motivation tips,
+            or best practices.
+
+            5. Before using WebSearchTool,
+            include:
+
+            [웹 검색: "<search topic>"]
+
+            6. Combine information from the user's goals
+            and web search results to provide
+            personalized recommendations.
+
+            7. Always be supportive and encouraging.
 
             Example:
 
-            [웹 검색: "습관 형성 방법"]
+            [목표 문서 검색]
 
-            가장 효과적인 방법 중 하나는 Habit Stacking입니다...
+            업로드된 목표에 따르면
+            주 3회 운동을 계획하셨네요.
+
+            [웹 검색: "운동 루틴 유지 방법"]
+
+            목표와 최신 조언을 바탕으로 보면...
                         """,
         tools = [ WebSearchTool(), 
-                 announce_search,
-                 
+                 FileSearchTool(vector_store_ids=[VECTOR_STORE_ID], max_num_results=3),
                     ]
         )
 
