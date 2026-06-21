@@ -4,15 +4,14 @@ import base64
 import dotenv
 dotenv.load_dotenv()  # Load environment variables from .env file
 import streamlit as st
-from agents import Agent, Runner, SQLiteSession, WebSearchTool, FileSearchTool, ImageGenerationTool, CodeInterpreterTool, HostedMCPTool
-from agents.mcp.server import MCPServerStdio
+from agents import Agent, Runner, SQLiteSession, WebSearchTool, function_tool, FileSearchTool
 client = OpenAI()
 
 VECTOR_STORE_ID = os.getenv("VECTOR_STORE_ID")
 
 
 if "session" not in st.session_state:
-    st.session_state["session"] = SQLiteSession("chat-history", "chat-gpt-clone-memory.db")
+    st.session_state["session"] = SQLiteSession("life-coach-history", "chat-gpt-clone-memory.db")
 session = st.session_state["session"]
 
 
@@ -38,23 +37,7 @@ async def paint_history():
             if  message_type == "web_search_call":
                 with st.chat_message("ai"):
                     st.write( "Searched the web ...")
-            elif message_type == "file_search_call":
-                with st.chat_message("ai"):
-                    st.write( "Searched the files ...")
-            elif message_type == "image_generation_call":   
-                image = base64.b64decode(message["result"])
-                with st.chat_message("ai"):
-                    st.image(image)
-            elif message_type == "code_interpreter_call":
-                with st.chat_message("ai"):
-                    st.code(message["code"])
-            elif message_type == "mcp_list_tools":
-                with st.chat_message("ai"):
-                    st.write(f"Listed {message["server_label"]}' tools")
-            elif message_type == "mcp_call":
-                with st.chat_message("ai"):
-                    st.write(f"Called {message["server_label"]}'s {message["name"]} with args: {message["arguments"]}")
- 
+            
 asyncio.run(paint_history())
 
 def update_status(status_container, event):
@@ -64,108 +47,52 @@ def update_status(status_container, event):
         'response.web_search_call.searched': ("웹 검색 중", "running"),
         "response.completed" : ("성공 ", "complete"),
 
-        'response.file_search_call.completed': ("파일 검색 성공 ", "complete"),
+        'response.file_search_call.completed': ("[목표 문서 검색]", "complete"),
         'response.file_search_call.in_progress': (" 파일 검색 시작 함", "running"),
         'response.file_search_call.searched': ("파일 검색 중", "running"),
 
-        'response.image_generation_call.in_progress': ("이미지 생성 시작 함", "running"),
-        'response.image_generation_call.generationg': ("이미지 생성 중", "running"),
-
-        'response.code_interpreter_call_code.done':("Rancode","complete"),
-        'response.code_interpreter_call_code.completed':("Rancode","complete"),
-        'response.code_interpreter_call_code.in_progress':("Running code", "complete"),
-        'response.code_interpreter_call_code.interpreting':("Running code", "complete"),
-         "response.mcp_call.completed": (
-            "⚒️ Called MCP tool",
-            "complete",
-        ),
-        "response.mcp_call.failed": (
-            "⚒️ Error calling MCP tool",
-            "complete",
-        ),
-        "response.mcp_call.in_progress": (
-            "⚒️ Calling MCP tool...",
-            "running",
-        ),
-        "response.mcp_list_tools.completed": (
-            "⚒️ Listed MCP tools",
-            "complete",
-        ),
-        "response.mcp_list_tools.failed": (
-            "⚒️ Error listing MCP tools",
-            "complete",
-        ),
-        "response.mcp_list_tools.in_progress": (
-            "⚒️ Listing MCP tools",
-            "running",
-        ),
     }
 
     if event in status_messages:
         label, state = status_messages[event]
         status_container.update(label=label, state=state)
 
-
-
+@function_tool
+def announce_search(topic:str):
+    return f'[웹 검색: "{topic}"]'
 
 async def run_agent(message):
-    yfinance_server = MCPServerStdio(
-        params={
-            "command":"uvx",
-            "args" : ["mcp-yahoo-finance"]
-        },
-        cache_tools_list=True,
-        client_session_timeout_seconds=60
-    )
-
-    timezone_server = MCPServerStdio(
-        params={
-            "command":"uvx",
-            "args" : ["mcp-server-time", "--local-timezone=America/New_York"],
-        },
-        client_session_timeout_seconds=60
-    )
-    async with yfinance_server, timezone_server:
+    
         agent = Agent(
-            mcp_servers=[
-                yfinance_server,
-                timezone_server
-            ],
-        name="ChatGPT Clone",
+            
+        name="Life Coach",
         instructions = """
-            You are a helpful assistant. 
+           You are a supportive and encouraging life coach.
 
-            You have access to the following tools:
-            - WebSearchTool: Use this when the user asks a question that isn't in your training data. Use this tool when the users asks about current or future events, when you thing you don't know the answer, try searching tor it in the web first.
-            - FileSearchTool: Use this tool when the user asks a question about facts related to themselves. Or when they ask question about specific files
-            - Code Interpreter Tool: Use this tool when you need to write and run code to answer the user's question.
-            """,
+            When answering questions about habits,
+            motivation, productivity, self-improvement,
+            or personal growth:
+
+            1. Determine a search topic.
+            2. Call announce_search(topic).
+            3. Include the exact result returned by announce_search
+            at the beginning of your final answer.
+            4. Use WebSearchTool.
+            5. Then provide coaching advice based on the search results.
+
+            Your final answer must start with:
+
+            [웹 검색: "..."]
+
+            Example:
+
+            [웹 검색: "습관 형성 방법"]
+
+            가장 효과적인 방법 중 하나는 Habit Stacking입니다...
+                        """,
         tools = [ WebSearchTool(), 
-                FileSearchTool(vector_store_ids=[VECTOR_STORE_ID], max_num_results=3),
-                ImageGenerationTool( tool_config = {
-                        "type":"image_generation",
-                        "quality":"low",
-                        "output_format":"jpeg" ,
-                        "moderation": "low",
-                        "partial_images": 1
-                    }, ),
-                CodeInterpreterTool(
-                    tool_config={
-                        "type" : "code_interpreter",
-                        "container":{"type":"auto",
-                                    # "file_ids":[] 해당하는 파일을 접근 권한을 주는 거
-                                    }
-                    }
-                ),
-                HostedMCPTool(
-                    tool_config={
-                        "server_url" : "Https://mcp.context7.com/mcp",
-                        "type":"mcp",
-                        "server_label":"Context7",
-                        "server_description" : "Use this to get the docs from software projects.",
-                        "require_approval":"never"
-                    }
-                )
+                 announce_search,
+                 
                     ]
         )
 
