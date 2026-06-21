@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, os
 from openai import OpenAI
 import base64
 import dotenv
@@ -8,7 +8,7 @@ from agents import Agent, Runner, SQLiteSession, WebSearchTool, FileSearchTool, 
 from agents.mcp.server import MCPServerStdio
 client = OpenAI()
 
-VECTOR_STORE_ID = "vs_6a32d758ade481919396c8fc95061bf3"
+VECTOR_STORE_ID = os.getenv("VECTOR_STORE_ID")
 
 
 if "session" not in st.session_state:
