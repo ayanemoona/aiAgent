@@ -15,7 +15,7 @@ if "session" not in st.session_state:
 session = st.session_state["session"]
 
 
-async def paint_history():
+async def paint_history(): 
     messages = await session.get_items()
 
     for message in messages:
