@@ -1,9 +1,10 @@
-from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, RunContextWrapper, function_tool,AgentHooks
 from models import UserAccountContext
 from tools import (
     make_reservation,
     check_reservation,
     cancel_reservation,
+    AgentToolUsageLoggingHooks,
 )
 
 
@@ -40,10 +41,11 @@ def dynamic_reservation_agent_instructions(
     """
 
 
-technical_agent = Agent(
+reservation_agent = Agent(
     name="Reservation Support Agent",
     instructions=dynamic_reservation_agent_instructions,
     tools=[ make_reservation,
         check_reservation,
-        cancel_reservation,]
+        cancel_reservation,],
+        hooks=AgentToolUsageLoggingHooks(),
 )
