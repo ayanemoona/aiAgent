@@ -1,8 +1,9 @@
-from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, RunContextWrapper, function_tool, AgentHooks
 from models import UserAccountContext
 from tools import (
     get_all_menu,
     get_menu_info,
+    AgentToolUsageLoggingHooks,
 )
 
 
@@ -33,9 +34,10 @@ def dynamic_menu_agent_instructions(
     """
 
 
-technical_agent = Agent(
+menu_agent = Agent(
     name="Menu Support Agent",
     instructions=dynamic_menu_agent_instructions,
     tools=[get_all_menu,
-    get_menu_info,]
+    get_menu_info,],
+    hooks=AgentToolUsageLoggingHooks(),
 )

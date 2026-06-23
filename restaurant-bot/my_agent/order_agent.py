@@ -1,9 +1,10 @@
-from agents import Agent, RunContextWrapper, function_tool
+from agents import Agent, RunContextWrapper, function_tool,AgentHooks
 from models import UserAccountContext
 from tools import (
     place_order,
     check_order,
     cancel_order,
+    AgentToolUsageLoggingHooks,
 )
 
 
@@ -37,10 +38,11 @@ def dynamic_order_agent_instructions(
     """
 
 
-technical_agent = Agent(
+order_agent = Agent(
     name="Order Agent",
     instructions=dynamic_order_agent_instructions,
     tools=[place_order,
     check_order,
-    cancel_order,]
+    cancel_order,],
+    hooks=AgentToolUsageLoggingHooks(),
 )

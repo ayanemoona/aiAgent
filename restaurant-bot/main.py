@@ -5,7 +5,7 @@ dotenv.load_dotenv()  # Load environment variables from .env file
 import streamlit as st
 from agents import Runner, SQLiteSession, InputGuardrailTripwireTriggered
 from models import UserAccountContext
-from my_agents.triage_agent import triage_agent
+from my_agent.triage_agent import triage_agent
 
 client = OpenAI()
 
@@ -18,7 +18,7 @@ user_account_ctx = UserAccountContext(
 )
 
 if "session" not in st.session_state:
-    st.session_state["session"] = SQLiteSession("chat-history", "customer-support-memory.db")
+    st.session_state["session"] = SQLiteSession("chat-history", "restaurant-memory.db")
 session = st.session_state["session"]
 
 if "agent" not in st.session_state:
