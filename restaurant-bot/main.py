@@ -13,7 +13,7 @@ client = OpenAI()
 
 user_account_ctx = UserAccountContext(
     customer_id =1,
-    name = "nico",
+    name = "muna",
     tier="basic"
 )
 
