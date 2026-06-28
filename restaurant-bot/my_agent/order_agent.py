@@ -6,7 +6,7 @@ from tools import (
     cancel_order,
     AgentToolUsageLoggingHooks,
 )
-
+from output_guardrails import order_output_guardrail
 
 
 def dynamic_order_agent_instructions(
@@ -45,4 +45,7 @@ order_agent = Agent(
     check_order,
     cancel_order,],
     hooks=AgentToolUsageLoggingHooks(),
+    output_guardrails=[
+        order_output_guardrail
+    ],
 )

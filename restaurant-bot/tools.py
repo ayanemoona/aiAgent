@@ -2,8 +2,6 @@
 import streamlit as st
 from agents import function_tool, AgentHooks, Agent, Tool, RunContextWrapper
 from models import UserAccountContext
-import random
-from datetime import datetime, timedelta
 
 
 # =============================================================================

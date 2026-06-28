@@ -6,6 +6,7 @@ from tools import (
     cancel_reservation,
     AgentToolUsageLoggingHooks,
 )
+from output_guardrails import reservation_output_guardrail
 
 
 
@@ -47,5 +48,8 @@ reservation_agent = Agent(
     tools=[ make_reservation,
         check_reservation,
         cancel_reservation,],
-        hooks=AgentToolUsageLoggingHooks(),
+    hooks=AgentToolUsageLoggingHooks(),
+     output_guardrails=[
+        reservation_output_guardrail
+    ]
 )

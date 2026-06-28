@@ -5,7 +5,7 @@ from tools import (
     get_menu_info,
     AgentToolUsageLoggingHooks,
 )
-
+from output_guardrails import menu_output_guardrail
 
 
 def dynamic_menu_agent_instructions(
@@ -40,4 +40,7 @@ menu_agent = Agent(
     tools=[get_all_menu,
     get_menu_info,],
     hooks=AgentToolUsageLoggingHooks(),
+    output_guardrails=[
+        menu_output_guardrail
+    ]
 )

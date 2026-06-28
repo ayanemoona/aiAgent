@@ -6,33 +6,13 @@ from my_agent.reservation_agent import reservation_agent
 import streamlit as st
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.extensions import handoff_filters
+from input_guardrails import restaurant_input_guardrail
 
-input_guardrail_agent = Agent(
-    name = "Input Gurdrail Agent",
-    instructions = """
-    Ensure the user's request is related to the restaurant.
-
-    Allowed topics:
-    - Menu information
-    - Ingredients
-    - Allergens and dietary restrictions
-    - Placing, modifying, or checking orders
-    - Table reservations
-    - Restaurant operating hours and policies
-
-    If the request is unrelated to the restaurant, return a reason explaining why it is off-topic.
-
-    Small talk and greetings are allowed, especially at the beginning of the conversation.
-
-    Do not assist with requests unrelated to the restaurant.
- """,
- output_type=InputGuardRailOutput,
-)
 
 @input_guardrail
 async def off_topic_guardrail(wrapper : RunContextWrapper[UserAccountContext],
         agent : Agent[UserAccountContext], input:str):
-    result = await Runner.run(input_guardrail_agent, input, context = wrapper.context)
+    result = await Runner.run(restaurant_input_guardrail, input, context = wrapper.context)
     return GuardrailFunctionOutput(output_info = result.final_output, tripwire_triggered=result.final_output.is_off_topic)
 
 def dynamic_triage_agent_instructions(
@@ -41,20 +21,33 @@ def dynamic_triage_agent_instructions(
     return f"""
     {RECOMMENDED_PROMPT_PREFIX}
 
-    You are a restaurant customer support agent.
+    You are a restaurant triage agent.
 
-    You ONLY help customers with questions related to:
+    Your only responsibility is to classify restaurant-related requests
+    and route them to the appropriate specialist agent.
+
+    Do not attempt to solve customer requests yourself.
+
+    You route customer requests related to:
     - Menu information
     - Orders
     - Reservations
 
+    Always classify based on the customer's intent, not only on keywords.
     Always address customers by their name.
+    Use the customer's name and email from the context whenever possible.
+    Do not ask for information already available.
 
     The customer's name is {wrapper.context.name}.
     The customer's email is {wrapper.context.email}.
 
     YOUR MAIN JOB:
-    Classify the customer's request and route them to the correct specialist agent.
+
+    1. Understand the customer's request.
+    2. Determine the customer's primary intent.
+    3. Ask one clarifying question if necessary.
+    4. Route the request to ONE specialist agent.
+    5. Do not solve the request yourself.
 
     ISSUE CLASSIFICATION GUIDE:
 
@@ -82,12 +75,14 @@ def dynamic_triage_agent_instructions(
     1. Listen to the customer's request.
     2. Ask clarifying questions if the category is unclear.
     3. Classify the request into ONE of the three categories above.
-    4. Explain why you are routing them.
+    4. Briefly explain the routing decision in one sentence.
     5. Route the request to the appropriate specialist agent.
 
     SPECIAL HANDLING:
     - Multiple issues: Handle the most urgent issue first and note any additional issues.
-    - Unclear requests: Ask 1-2 clarifying questions before routing.
+        Never route to multiple specialist agents at the same time.
+    - Unclear requests: Ask one short clarifying question before routing.
+        Do not guess the customer's intent.
 
     """
 
@@ -112,7 +107,7 @@ def make_handoff(agent):
 triage_agent = Agent(
     name = "Trage Agent",
     instructions = dynamic_triage_agent_instructions,
-    input_guardrails=[off_topic_guardrail,],
+    input_guardrails=[restaurant_input_guardrail],
     handoffs=[
         make_handoff(menu_agent),
         make_handoff(order_agent),
